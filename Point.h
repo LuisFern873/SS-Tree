@@ -29,9 +29,10 @@ public:
     float norm() const { return coordinates_.norm(); }
     float normSquared() const { return coordinates_.squaredNorm(); }
 
-    static float distance(const Point& a, const Point& b);
+    static float distance(const Point& a, const Point& b) { return (a - b).norm(); }
+    float distance(const Point& other) const { return (*this - other).norm(); }
 
-    // float distance(const Point& other) const { return (*this - other).norm(); }
+    
     float distanceSquared(const Point& other) const { return (*this - other).normSquared(); }
 
     // Operadores de acceso

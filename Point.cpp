@@ -50,9 +50,9 @@ Point& Point::operator/=(float scalar) {
     return *this;
 }
 
-float Point::distance(const Point& a, const Point& b) {
-    return (a - b).norm();
-}
+// float Point::distance(const Point& a, const Point& b) {
+//     return (a - b).norm();
+// }
 
 // Punto aleatorio
 Point Point::random(float min, float max) {

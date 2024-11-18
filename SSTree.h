@@ -69,6 +69,8 @@ public:
     void insert(Data* _data);
     SSNode* search(Data* _data);
     SSNode* getRoot() const { return root; }
+
+    std::vector<Data*> knn(Point point, size_t k) const;
 };
 
 #endif // SSTREE_H

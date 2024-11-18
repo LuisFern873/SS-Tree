@@ -363,20 +363,15 @@ void SSTree::insert(Data* data) {
     if (root == nullptr) {
         root = new SSNode(data->getEmbedding(), maxPointsPerNode);
     }
-
     auto [newChild1, newChild2] = root->insert(data);
 
     if (newChild1 != nullptr) {
         root = new SSNode(data->getEmbedding(), maxPointsPerNode);
-
         root->children.push_back(newChild1);
         root->children.push_back(newChild2);
         root->isLeaf = false;
     }
 }
-
-// function SsNode(leaf, points=[], children=[])
-
 
 /**
  * search
@@ -386,4 +381,43 @@ void SSTree::insert(Data* data) {
  */
 SSNode* SSTree::search(Data* _data) {
     return nullptr;
+}
+
+
+
+// Depth-Firstk-NearestNeighbor
+
+/*
+root->getData().size() = 0
+root->getEntriesCentroids().size() = 4
+root->getChildren()[0]->getData().size() = 0
+*/
+
+void collectData(SSNode* node, std::vector<Data*>& treeData) {
+    if (node->getIsLeaf()) {
+        for (const auto& d : node->getData()) {
+            treeData.push_back(d);
+        }
+    } else {
+        for (const auto& child : node->getChildren()) {
+            collectData(child, treeData);
+        }
+    }
+}
+
+
+std::vector<Data*> SSTree::knn(Point point, size_t k) const {
+
+    // Descartar nodos
+
+    std::vector<Data*> result;
+    collectData(root, result);
+
+    std::sort(result.begin(), result.end(), [&point](Data *a, Data *b) {
+        return a->getEmbedding().distance(point) < b->getEmbedding().distance(point);
+    });
+
+    result.resize(k);
+
+    return result;
 }
