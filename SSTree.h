@@ -5,6 +5,8 @@
 #include <limits>
 #include <algorithm>
 #include <numeric>
+#include <utility>
+#include <queue>
 #include "Point.h"
 #include "Data.h"
 

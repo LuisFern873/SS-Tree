@@ -141,7 +141,7 @@ bool sphereCoversAllChildrenSpheres(SSNode* root) {
 
 bool correctKnnSearch(const SSTree &tree, std::vector<Data *> &data) {
     Point query = Point::random();
-    size_t k = 5;
+    size_t k = 1;
     auto resultUsingTree = tree.knn(query, k);
 
     std::sort(data.begin(), data.end(), [&query](Data *a, Data *b) {

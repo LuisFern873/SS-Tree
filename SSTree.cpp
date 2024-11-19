@@ -1,5 +1,4 @@
 #include "SSTree.h"
-#include <utility>
 
 /**
  * intersectsPoint
@@ -339,20 +338,25 @@ std::pair<SSNode*, SSNode*> SSNode::insert(Data* data) {
  * @return SSNode*: Nodo que contiene el dato (o nullptr si no se encuentra).
  */
 SSNode* SSNode::search(Data* data) {
-
-
-    return nullptr;
+    // Si el nodo es una hoja, buscar directamente en sus datos
+    if (this->getIsLeaf()) {
+        for (const auto& d : this->getData()) {
+            if (d == data) {
+                return this;
+            }
+        }
+        return nullptr;
+    } else {
+        // Si es un nodo interno, buscar recursivamente en los hijos
+        for (const auto& child : this->getChildren()) {
+            SSNode* result = child->search(data);
+            if (result != nullptr) {
+                return result; // Retornar el nodo donde se encontró el dato
+            }
+        }
+        return nullptr; // No se encontró en ninguno de los hijos
+    }
 }
-
-
-
-
-
-
-
-
-
-
 
 /**
  * insert
@@ -379,19 +383,20 @@ void SSTree::insert(Data* data) {
  * @param _data: Dato a buscar.
  * @return SSNode*: Nodo que contiene el dato (o nullptr si no se encuentra).
  */
-SSNode* SSTree::search(Data* _data) {
-    return nullptr;
+SSNode* SSTree::search(Data* data) {
+    if (root == nullptr) {
+        return nullptr;
+    }
+    return root->search(data);
 }
 
 
 
-// Depth-Firstk-NearestNeighbor
+
 
 /*
-root->getData().size() = 0
-root->getEntriesCentroids().size() = 4
-root->getChildren()[0]->getData().size() = 0
-*/
+
+Naive algorithm! :o
 
 void collectData(SSNode* node, std::vector<Data*>& treeData) {
     if (node->getIsLeaf()) {
@@ -408,8 +413,6 @@ void collectData(SSNode* node, std::vector<Data*>& treeData) {
 
 std::vector<Data*> SSTree::knn(Point point, size_t k) const {
 
-    // Descartar nodos
-
     std::vector<Data*> result;
     collectData(root, result);
 
@@ -418,6 +421,55 @@ std::vector<Data*> SSTree::knn(Point point, size_t k) const {
     });
 
     result.resize(k);
+
+    return result;
+}
+
+*/
+
+// Depth-First k-NearestNeighbor
+// Helper para mantener los k-vecinos más cercanos
+using Neighbor = std::pair<float, Data*>; // Par de (distancia, puntero a datos)
+
+struct Compare {
+    bool operator()(const Neighbor& a, const Neighbor& b) {
+        return a.first < b.first; // Orden inverso para max-heap
+    }
+};
+
+void knnDFS(SSNode* node, const Point& point, size_t k, std::priority_queue<Neighbor, std::vector<Neighbor>, Compare>& nearestNeighbors) {
+    if (node->getIsLeaf()) { // Si es hoja, revisar todos los datos en el nodo
+        for (const auto& data : node->getData()) {
+            float distance = data->getEmbedding().distance(point);
+            if (nearestNeighbors.size() < k) {
+                nearestNeighbors.push({distance, data});
+            } else if (distance < nearestNeighbors.top().first) {
+                nearestNeighbors.pop();
+                nearestNeighbors.push({distance, data});
+            }
+        }
+    } else { // Si es nodo interno, revisar cada hijo
+        for (auto* child : node->getChildren()) {
+            float distanceToChild = point.distance(child->getCentroid());
+            if (nearestNeighbors.size() < k || distanceToChild - child->getRadius() < nearestNeighbors.top().first) {
+                knnDFS(child, point, k, nearestNeighbors);
+            }
+        }
+    }
+}
+
+std::vector<Data*> SSTree::knn(Point point, size_t k) const {
+
+    std::priority_queue<Neighbor, std::vector<Neighbor>, Compare> nearestNeighbors;
+
+    knnDFS(root, point, k, nearestNeighbors);
+    
+    std::vector<Data*> result;
+    while (!nearestNeighbors.empty()) {
+        result.push_back(nearestNeighbors.top().second);
+        nearestNeighbors.pop();
+    }
+    std::reverse(result.begin(), result.end());
 
     return result;
 }
