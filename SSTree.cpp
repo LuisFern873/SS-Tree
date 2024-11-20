@@ -26,7 +26,6 @@ SSNode* SSNode::findClosestChild(const Point& target) {
     float minDistance = std::numeric_limits<float>::infinity();
     SSNode* closestChild = nullptr;
 
-    // Iteramos sobre cada hijo para encontrar el más cercano
     for (SSNode* child : children) {
         float dist = Point::distance(child->getCentroid(), target);
         
@@ -46,24 +45,21 @@ SSNode* SSNode::findClosestChild(const Point& target) {
  */
 
 void SSNode::updateBoundingEnvelope() {
-    // Obtener los puntos de los elementos contenidos en el nodo
     std::vector<Point> points = getEntriesCentroids();
     
     if (points.empty()) {
         throw std::logic_error("No hay puntos para actualizar el bounding envelope.");
     }
 
-    // Calcular el nuevo centroide como la  mediade los puntos en cada dimensión
     Eigen::VectorXf centroidCoordinates = Eigen::VectorXf::Zero(DIM);
 
     for (const auto& point : points) {
-        centroidCoordinates += point.coordinates_; // Sumamos cada punto
+        centroidCoordinates += point.coordinates_; 
     }
     
-    centroidCoordinates /= points.size(); // Dividimos por el número de puntos para obtener la media
-    centroid = Point(centroidCoordinates); // Asignamos el nuevo centroide
+    centroidCoordinates /= points.size(); 
+    centroid = Point(centroidCoordinates); 
 
-    // Calcular el radio como la máxima distancia desde el nuevo centroide a cualquier punto en el nodo
     radius = 0.0f;
     for (const auto& entry : points) {
         float dist = Point::distance(centroid, entry);
@@ -92,7 +88,6 @@ float SSNode::varianceAlongDirection(const std::vector<Point>& centroids, size_t
 
     mean /= centroids.size();
 
-    // Calcula la varianza a lo largo de la dirección especificada
     float variance = 0.0f;
     for (const auto& point : centroids) {
         float diff = point[directionIndex] - mean;
@@ -391,9 +386,6 @@ SSNode* SSTree::search(Data* data) {
 }
 
 
-
-
-
 /*
 
 Naive algorithm! :o
@@ -428,48 +420,64 @@ std::vector<Data*> SSTree::knn(Point point, size_t k) const {
 */
 
 // Depth-First k-NearestNeighbor
-// Helper para mantener los k-vecinos más cercanos
+
 using Neighbor = std::pair<float, Data*>; // Par de (distancia, puntero a datos)
 
 struct Compare {
     bool operator()(const Neighbor& a, const Neighbor& b) {
-        return a.first < b.first; // Orden inverso para max-heap
+        // Orden inverso para max-heap :D
+        return a.first < b.first; 
     }
 };
 
-void knnDFS(SSNode* node, const Point& point, size_t k, std::priority_queue<Neighbor, std::vector<Neighbor>, Compare>& nearestNeighbors) {
-    if (node->getIsLeaf()) { // Si es hoja, revisar todos los datos en el nodo
+// Función auxiliar para DFS con poda
+void knnDFS(SSNode* node, const Point& queryPoint, size_t k, 
+            std::priority_queue<Neighbor, std::vector<Neighbor>, Compare>& nearestNeighbors, 
+            float& maxDistance) {
+    if (!node) return;
+
+    float distToCentroid = queryPoint.distance(node->getCentroid());
+
+    // Regla de poda para nodos internos
+    if (distToCentroid - node->getRadius() > maxDistance) {
+        return; // Poda: este nodo no puede contener vecinos más cercanos
+    }
+
+    if (node->getIsLeaf()) {
         for (const auto& data : node->getData()) {
-            float distance = data->getEmbedding().distance(point);
+            float distance = queryPoint.distance(data->getEmbedding());
             if (nearestNeighbors.size() < k) {
                 nearestNeighbors.push({distance, data});
-            } else if (distance < nearestNeighbors.top().first) {
-                nearestNeighbors.pop();
+                maxDistance = std::max(maxDistance, distance);
+            } else if (distance < maxDistance) {
+
+                nearestNeighbors.pop(); 
                 nearestNeighbors.push({distance, data});
+                maxDistance = nearestNeighbors.top().first;
             }
         }
-    } else { // Si es nodo interno, revisar cada hijo
+    } else {
         for (auto* child : node->getChildren()) {
-            float distanceToChild = point.distance(child->getCentroid());
-            if (nearestNeighbors.size() < k || distanceToChild - child->getRadius() < nearestNeighbors.top().first) {
-                knnDFS(child, point, k, nearestNeighbors);
-            }
+            knnDFS(child, queryPoint, k, nearestNeighbors, maxDistance);
         }
     }
 }
 
-std::vector<Data*> SSTree::knn(Point point, size_t k) const {
+std::vector<Data*> SSTree::knn(Point queryPoint, size_t k) const {
+    if (!root) return {};
 
     std::priority_queue<Neighbor, std::vector<Neighbor>, Compare> nearestNeighbors;
 
-    knnDFS(root, point, k, nearestNeighbors);
-    
+    float maxDistance = std::numeric_limits<float>::infinity();
+
+    knnDFS(root, queryPoint, k, nearestNeighbors, maxDistance);
+
     std::vector<Data*> result;
     while (!nearestNeighbors.empty()) {
         result.push_back(nearestNeighbors.top().second);
         nearestNeighbors.pop();
     }
-    std::reverse(result.begin(), result.end());
 
+    std::reverse(result.begin(), result.end());
     return result;
 }
